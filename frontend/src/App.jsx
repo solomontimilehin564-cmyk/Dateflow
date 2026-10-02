@@ -43,6 +43,9 @@ function App() {
   const [shown, setShown] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const cur = CURRENCIES[currency];
 
@@ -50,6 +53,23 @@ function App() {
     setCurrency(code);
     setBudget(CURRENCIES[code].start);
   }
+
+  // If the page was opened from a shared link (?d=ID), load that date.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("d");
+    if (!id) return;
+    setLoading(true);
+    fetch(`${API_URL}/api/dates/${encodeURIComponent(id)}`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "We couldn't find that date.");
+        setPlan(data);
+        setShown(data.surprise ? 0 : data.stops.length + 1);
+        setShareUrl(window.location.href);
+      })
+      .catch((err) => setError(err.message || "Could not load that date."))
+      .finally(() => setLoading(false));
+  }, []);
 
   // Normal mode: reveal automatically. Surprise mode: the couple taps to reveal.
   useEffect(() => {
@@ -64,6 +84,8 @@ function App() {
     setError("");
     setPlan(null);
     setShown(0);
+    setShareUrl("");
+    setCopied(false);
     try {
       const res = await fetch(`${API_URL}/api/plan`, {
         method: "POST",
@@ -83,6 +105,40 @@ function App() {
   function handleSubmit(e) {
     e.preventDefault();
     generate(false);
+  }
+
+  async function copyLink(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  async function saveAndShare() {
+    if (shareUrl) {
+      copyLink(shareUrl);
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_URL}/api/dates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(plan),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not save the date.");
+      const url = `${window.location.origin}${window.location.pathname}?d=${data.id}`;
+      setShareUrl(url);
+      copyLink(url);
+    } catch (err) {
+      setError(err.message || "Could not save the date. Try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const total = plan ? plan.stops.reduce((sum, s) => sum + s.cost, 0) : 0;
@@ -249,6 +305,31 @@ function App() {
             <p className="total">
               {formatMoney(total, plan.currency)} estimated
             </p>
+          )}
+
+          <button
+            type="button"
+            className="share-btn"
+            onClick={saveAndShare}
+            disabled={saving}
+          >
+            {saving
+              ? "Saving..."
+              : shareUrl
+              ? copied
+                ? "Link copied ✓"
+                : "Copy link"
+              : "Save and share this date"}
+          </button>
+
+          {shareUrl && (
+            <input
+              className="share-link"
+              readOnly
+              value={shareUrl}
+              aria-label="Shareable link"
+              onFocus={(e) => e.target.select()}
+            />
           )}
         </section>
       )}
