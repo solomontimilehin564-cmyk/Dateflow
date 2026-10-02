@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
@@ -6,6 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/dates", require("./dates"));
 
 // Each vibe has up to 5 stops. "share" is the fraction of the budget for that stop.
 const PLANS = {
