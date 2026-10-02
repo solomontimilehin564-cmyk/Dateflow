@@ -268,3 +268,34 @@ button {
     transition: none;
   }
 }
+.teaser {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #efe7ff;
+  border: 2px dashed var(--violet);
+}
+
+.next-btn {
+  width: 100%;
+  margin-top: 20px;
+  padding: 15px;
+  border: 0;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--violet), var(--pink));
+  box-shadow: 0 8px 20px rgba(122, 47, 208, 0.35);
+  transition: transform 0.15s ease;
+}
+
+.next-btn:hover {
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .next-btn {
+    transition: none;
+  }
+}

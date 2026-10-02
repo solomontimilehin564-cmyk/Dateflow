@@ -51,9 +51,9 @@ function App() {
     setBudget(CURRENCIES[code].start);
   }
 
-  // Reveal timer: intro first, then one stop at a time, then the total.
+  // Normal mode: reveal automatically. Surprise mode: the couple taps to reveal.
   useEffect(() => {
-    if (!plan || shown > plan.stops.length) return;
+    if (!plan || plan.surprise || shown > plan.stops.length) return;
     const delay = shown === 0 ? 1500 : 1200;
     const timer = setTimeout(() => setShown((s) => s + 1), delay);
     return () => clearTimeout(timer);
@@ -86,6 +86,13 @@ function App() {
   }
 
   const total = plan ? plan.stops.reduce((sum, s) => sum + s.cost, 0) : 0;
+
+  let nextLabel = "";
+  if (plan && plan.surprise) {
+    if (shown === 0) nextLabel = "Start our date";
+    else if (shown < plan.stops.length) nextLabel = "We're done here. Next stop";
+    else if (shown === plan.stops.length) nextLabel = "Show the total cost";
+  }
 
   return (
     <main className="app">
@@ -186,10 +193,21 @@ function App() {
 
       {plan && (
         <section className="result" aria-live="polite">
-          <h2 className="reveal-title">Your date is ready… 👀</h2>
+          <h2 className="reveal-title">
+            {plan.surprise ? "Your surprise date is ready 🎁" : "Your date is ready… 👀"}
+          </h2>
           <p className="summary">
-            {plan.vibe} in {plan.location}
+            {plan.surprise
+              ? `A secret date in ${plan.location}`
+              : `${plan.vibe} in ${plan.location}`}
           </p>
+
+          {plan.surprise && shown === 0 && (
+            <p className="teaser">
+              No peeking. Each stop stays secret until you tap the button, so
+              you both find out together.
+            </p>
+          )}
 
           <div className="timeline">
             {plan.stops.map((s, i) => {
@@ -216,6 +234,16 @@ function App() {
               );
             })}
           </div>
+
+          {nextLabel && (
+            <button
+              type="button"
+              className="next-btn"
+              onClick={() => setShown((s) => s + 1)}
+            >
+              {nextLabel}
+            </button>
+          )}
 
           {shown > plan.stops.length && (
             <p className="total">
