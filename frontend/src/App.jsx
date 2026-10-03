@@ -9,6 +9,14 @@ const CURRENCIES = {
   NGN: { label: "Naira (₦)", locale: "en-NG", min: 10000, max: 500000, step: 10000, start: 100000 },
 };
 
+const ADVENTURE_LABELS = [
+  "Very laid back",
+  "Easy-going",
+  "Up for some fun",
+  "Adventurous",
+  "All in",
+];
+
 const EMOJI = {
   "Warm-up": "🌅",
   "Fuel up": "🌮",
@@ -61,12 +69,45 @@ function mapsUrl(place) {
   return "https://www.google.com/maps/search/?api=1&query=" + query;
 }
 
+function sessionLink(id) {
+  return window.location.origin + window.location.pathname + "?s=" + id;
+}
+
+function readHostKey(id) {
+  try {
+    return window.localStorage.getItem("dateflow_host_" + id);
+  } catch {
+    return null;
+  }
+}
+
+function saveHostKey(id, key) {
+  try {
+    window.localStorage.setItem("dateflow_host_" + id, key);
+  } catch {
+    // Storage can be blocked. The session still works.
+  }
+}
+
+async function postJson(path, body) {
+  const res = await fetch(API_URL + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Something went wrong.");
+  return data;
+}
+
 function App() {
   const [stay, setStay] = useState(false);
+  const [together, setTogether] = useState(false);
   const [currency, setCurrency] = useState("USD");
   const [budget, setBudget] = useState(CURRENCIES.USD.start);
   const [free, setFree] = useState(false);
   const [vibe, setVibe] = useState("Romantic");
+  const [adventure, setAdventure] = useState(3);
   const [location, setLocation] = useState("");
   const [hours, setHours] = useState(3);
   const [date, setDate] = useState(todayString());
@@ -79,29 +120,95 @@ function App() {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Couple session state
+  const [session, setSession] = useState(null);
+  const [role, setRole] = useState(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [gVibe, setGVibe] = useState("Romantic");
+  const [gAdventure, setGAdventure] = useState(3);
+  const [gFree, setGFree] = useState(false);
+  const [gBudget, setGBudget] = useState(null);
+
   const cur = CURRENCIES[currency];
+  const setup = session ? session.setup : null;
+  const gCur = setup ? CURRENCIES[setup.currency] : null;
+  const gBudgetValue = gCur ? (gBudget === null ? gCur.start : gBudget) : 0;
+
+  const needsGuestAnswers =
+    session && !session.plan && role === "guest" && !session.bDone;
+  const waiting =
+    session &&
+    !session.plan &&
+    ((role === "host" && session.aDone) || (role === "guest" && session.bDone));
 
   function chooseCurrency(code) {
     setCurrency(code);
     setBudget(CURRENCIES[code].start);
   }
 
-  // If the page was opened from a shared link (?d=ID), load that date.
+  // Open a shared link: ?s=ID is a couple session, ?d=ID is a saved date.
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("d");
-    if (!id) return;
-    setLoading(true);
-    fetch(API_URL + "/api/dates/" + encodeURIComponent(id))
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "We couldn't find that date.");
-        setPlan(data);
-        setShown(data.surprise ? 0 : data.stops.length + 1);
-        setShareUrl(window.location.href);
-      })
-      .catch((err) => setError(err.message || "Could not load that date."))
-      .finally(() => setLoading(false));
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get("s");
+    const did = params.get("d");
+
+    if (sid) {
+      setLoading(true);
+      fetch(API_URL + "/api/sessions/" + encodeURIComponent(sid))
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "We couldn't find that session.");
+          setRole(readHostKey(sid) ? "host" : "guest");
+          setSession(data);
+          if (data.plan) {
+            setPlan(data.plan);
+            setShown(0);
+          }
+        })
+        .catch((err) => setError(err.message || "Could not load that session."))
+        .finally(() => setLoading(false));
+      return;
+    }
+
+    if (did) {
+      setLoading(true);
+      fetch(API_URL + "/api/dates/" + encodeURIComponent(did))
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "We couldn't find that date.");
+          setPlan(data);
+          setShown(data.surprise ? 0 : data.stops.length + 1);
+          setShareUrl(window.location.href);
+        })
+        .catch((err) => setError(err.message || "Could not load that date."))
+        .finally(() => setLoading(false));
+    }
   }, []);
+
+  // While waiting for the other person, check for the finished plan.
+  useEffect(() => {
+    if (!session || session.plan) return;
+    const answered = role === "host" ? session.aDone : session.bDone;
+    if (!answered) return;
+    const id = session.id;
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(API_URL + "/api/sessions/" + encodeURIComponent(id));
+        const data = await res.json();
+        if (res.ok) {
+          setSession(data);
+          if (data.plan) {
+            setPlan(data.plan);
+            setShown(0);
+            setShareUrl("");
+          }
+        }
+      } catch {
+        // Keep waiting.
+      }
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [session, role]);
 
   // Normal mode: reveal automatically. Surprise mode: the couple taps to reveal.
   useEffect(() => {
@@ -119,21 +226,15 @@ function App() {
     setShareUrl("");
     setCopied(false);
     try {
-      const res = await fetch(API_URL + "/api/plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          budget: free ? 0 : budget,
-          free: free,
-          stay: stay,
-          vibe: vibe,
-          location: stay ? "Home" : location,
-          hours: hours,
-          surprise: surprise,
-        }),
+      const data = await postJson("/api/plan", {
+        budget: free ? 0 : budget,
+        free: free,
+        stay: stay,
+        vibe: vibe,
+        location: stay ? "Home" : location,
+        hours: hours,
+        surprise: surprise,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Something went wrong.");
       setPlan({ ...data, currency: currency, startTime: startTime, date: date });
     } catch (err) {
       setError(err.message || "Could not reach the server. Try again.");
@@ -142,9 +243,86 @@ function App() {
     }
   }
 
+  async function createSession(surprise) {
+    setLoading(true);
+    setError("");
+    setPlan(null);
+    setShown(0);
+    setShareUrl("");
+    try {
+      const created = await postJson("/api/sessions", {
+        stay: stay,
+        location: stay ? "Home" : location,
+        hours: hours,
+        date: date,
+        startTime: startTime,
+        currency: currency,
+        surprise: surprise,
+      });
+      saveHostKey(created.id, created.hostKey);
+      const state = await postJson("/api/sessions/" + created.id + "/answers", {
+        role: "host",
+        hostKey: created.hostKey,
+        answers: {
+          budget: free ? 0 : budget,
+          vibe: vibe,
+          adventure: adventure,
+          free: free,
+        },
+      });
+      window.history.pushState({}, "", "?s=" + created.id);
+      setRole("host");
+      setSession(state);
+    } catch (err) {
+      setError(err.message || "Could not start the session. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitGuest() {
+    setLoading(true);
+    setError("");
+    try {
+      const state = await postJson("/api/sessions/" + session.id + "/answers", {
+        role: "guest",
+        answers: {
+          budget: gFree ? 0 : gBudgetValue,
+          vibe: gVibe,
+          adventure: gAdventure,
+          free: gFree,
+        },
+      });
+      setSession(state);
+      if (state.plan) {
+        setPlan(state.plan);
+        setShown(0);
+        setShareUrl("");
+      }
+    } catch (err) {
+      setError(err.message || "Could not save your answers. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function handleSubmit(e) {
     e.preventDefault();
-    generate(false);
+    if (together) createSession(false);
+    else generate(false);
+  }
+
+  function resetAll() {
+    setSession(null);
+    setRole(null);
+    setPlan(null);
+    setShown(0);
+    setShareUrl("");
+    setError("");
+    setLinkCopied(false);
+    setGBudget(null);
+    setGFree(false);
+    window.history.pushState({}, "", window.location.pathname);
   }
 
   async function copyLink(url) {
@@ -156,6 +334,15 @@ function App() {
     }
   }
 
+  async function copySessionLink() {
+    try {
+      await navigator.clipboard.writeText(sessionLink(session.id));
+      setLinkCopied(true);
+    } catch {
+      setLinkCopied(false);
+    }
+  }
+
   async function saveAndShare() {
     if (shareUrl) {
       copyLink(shareUrl);
@@ -164,13 +351,7 @@ function App() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(API_URL + "/api/dates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(plan),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not save the date.");
+      const data = await postJson("/api/dates", plan);
       const url = window.location.origin + window.location.pathname + "?d=" + data.id;
       setShareUrl(url);
       copyLink(url);
@@ -199,6 +380,17 @@ function App() {
     }
   }
 
+  let blendText = "";
+  if (plan && plan.blend) {
+    const b = plan.blend;
+    blendText = "💞 Blended from " + b.vibes[0] + " + " + b.vibes[1];
+    if (b.vibes[0] !== b.vibes[1]) blendText += " → " + b.vibe;
+    blendText += b.free
+      ? ". One of you wanted a free date, so it costs nothing."
+      : ". Budget set to the lower of your two.";
+  }
+  const showBlend = plan && plan.blend && (!plan.surprise || shown > plan.stops.length);
+
   return (
     <main className="app">
       <h1 className="brand">
@@ -207,54 +399,81 @@ function App() {
       </h1>
       <p className="tagline">Tell us your vibe. We'll handle the date.</p>
 
-      <form onSubmit={handleSubmit}>
-        <fieldset>
-          <legend>Where is the date?</legend>
-          <div className="vibes">
-            <button
-              type="button"
-              className={!stay ? "vibe active" : "vibe"}
-              onClick={() => setStay(false)}
-            >
-              Go out
-            </button>
-            <button
-              type="button"
-              className={stay ? "vibe active" : "vibe"}
-              onClick={() => setStay(true)}
-            >
-              Stay in
-            </button>
+      {!session && (
+        <form onSubmit={handleSubmit}>
+          <fieldset>
+            <legend>Where is the date?</legend>
+            <div className="vibes">
+              <button
+                type="button"
+                className={!stay ? "vibe active" : "vibe"}
+                onClick={() => setStay(false)}
+              >
+                Go out
+              </button>
+              <button
+                type="button"
+                className={stay ? "vibe active" : "vibe"}
+                onClick={() => setStay(true)}
+              >
+                Stay in
+              </button>
+            </div>
+          </fieldset>
+
+          {!stay && (
+            <>
+              <label htmlFor="location">Where are you?</label>
+              <input
+                id="location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="City or neighborhood"
+                required
+              />
+            </>
+          )}
+
+          <fieldset>
+            <legend>Who is planning?</legend>
+            <div className="vibes">
+              <button
+                type="button"
+                className={!together ? "vibe active" : "vibe"}
+                onClick={() => setTogether(false)}
+              >
+                On my own
+              </button>
+              <button
+                type="button"
+                className={together ? "vibe active" : "vibe"}
+                onClick={() => setTogether(true)}
+              >
+                With my partner
+              </button>
+            </div>
+          </fieldset>
+
+          {together && (
+            <p className="hint">
+              You answer privately, then send a link. Your partner answers too,
+              and DateFlow blends both.
+            </p>
+          )}
+
+          <div className="free-toggle">
+            <input id="free" type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} />
+            <label htmlFor="free">
+              <strong>Free date</strong>
+              <small>
+                {stay
+                  ? "Uses only what you already have at home."
+                  : "Parks, views, walks and picnics. Costs nothing."}
+              </small>
+            </label>
           </div>
-        </fieldset>
 
-        {!stay && (
-          <>
-            <label htmlFor="location">Where are you?</label>
-            <input
-              id="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="City or neighborhood"
-              required
-            />
-          </>
-        )}
-
-        <div className="free-toggle">
-          <input id="free" type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} />
-          <label htmlFor="free">
-            <strong>Free date</strong>
-            <small>
-              {stay
-                ? "Uses only what you already have at home."
-                : "Parks, views, walks and picnics. Costs nothing."}
-            </small>
-          </label>
-        </div>
-
-        {!free && (
-          <>
+          {(!free || together) && (
             <fieldset>
               <legend>Currency</legend>
               <div className="vibes">
@@ -270,84 +489,226 @@ function App() {
                 ))}
               </div>
             </fieldset>
+          )}
 
-            <label htmlFor="budget">
-              Budget: {formatMoney(budget, currency)}
+          {!free && (
+            <>
+              <label htmlFor="budget">
+                Budget: {formatMoney(budget, currency)}
+              </label>
+              <input
+                id="budget"
+                type="range"
+                min={cur.min}
+                max={cur.max}
+                step={cur.step}
+                value={budget}
+                onChange={(e) => setBudget(Number(e.target.value))}
+              />
+            </>
+          )}
+
+          <label htmlFor="hours">Time available</label>
+          <select
+            id="hours"
+            value={hours}
+            onChange={(e) => setHours(Number(e.target.value))}
+          >
+            <option value={2}>2 hours</option>
+            <option value={3}>3 hours</option>
+            <option value={4}>4 hours</option>
+            <option value={6}>6 hours</option>
+            <option value={8}>Full day</option>
+          </select>
+
+          <label htmlFor="date">Date of the date</label>
+          <input
+            id="date"
+            type="date"
+            value={date}
+            min={todayString()}
+            onChange={(e) => setDate(e.target.value)}
+            required
+          />
+
+          <label htmlFor="start">Start time</label>
+          <input
+            id="start"
+            type="time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            required
+          />
+
+          <fieldset>
+            <legend>Vibe</legend>
+            <div className="vibes">
+              {VIBES.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={v === vibe ? "vibe active" : "vibe"}
+                  onClick={() => setVibe(v)}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          {together && (
+            <>
+              <label htmlFor="adventure">
+                How adventurous do you feel? {ADVENTURE_LABELS[adventure - 1]}
+              </label>
+              <input
+                id="adventure"
+                type="range"
+                min="1"
+                max="5"
+                step="1"
+                value={adventure}
+                onChange={(e) => setAdventure(Number(e.target.value))}
+              />
+            </>
+          )}
+
+          <div className="actions">
+            <button type="submit" className="primary" disabled={loading}>
+              {loading ? "Working..." : together ? "Start our session" : "Plan our date"}
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => (together ? createSession(true) : generate(true))}
+              disabled={(!stay && !location) || loading}
+            >
+              {together ? "Surprise us" : "Surprise me"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {needsGuestAnswers && setup && (
+        <section className="result">
+          <h2>You're invited to a DateFlow 💕</h2>
+          <p className="summary">
+            {setup.stay ? "At home" : "In " + setup.location} · {setup.hours} hours
+          </p>
+          <p className="when">
+            📅 {formatDate(setup.date)} at {formatTime(setup.startTime, 0)}
+          </p>
+          <p className="hint">
+            {setup.surprise
+              ? "This one is a surprise date. "
+              : ""}
+            Your answers stay private until the plan is ready.
+          </p>
+
+          <div className="join-fields">
+            <fieldset>
+              <legend>Your vibe</legend>
+              <div className="vibes">
+                {VIBES.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className={v === gVibe ? "vibe active" : "vibe"}
+                    onClick={() => setGVibe(v)}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <label htmlFor="gadventure">
+              How adventurous do you feel? {ADVENTURE_LABELS[gAdventure - 1]}
             </label>
             <input
-              id="budget"
+              id="gadventure"
               type="range"
-              min={cur.min}
-              max={cur.max}
-              step={cur.step}
-              value={budget}
-              onChange={(e) => setBudget(Number(e.target.value))}
+              min="1"
+              max="5"
+              step="1"
+              value={gAdventure}
+              onChange={(e) => setGAdventure(Number(e.target.value))}
             />
-          </>
-        )}
 
-        <label htmlFor="hours">Time available</label>
-        <select
-          id="hours"
-          value={hours}
-          onChange={(e) => setHours(Number(e.target.value))}
-        >
-          <option value={2}>2 hours</option>
-          <option value={3}>3 hours</option>
-          <option value={4}>4 hours</option>
-          <option value={6}>6 hours</option>
-          <option value={8}>Full day</option>
-        </select>
+            <div className="free-toggle">
+              <input id="gfree" type="checkbox" checked={gFree} onChange={(e) => setGFree(e.target.checked)} />
+              <label htmlFor="gfree">
+                <strong>I'd like it free</strong>
+                <small>If either of you picks free, the date costs nothing.</small>
+              </label>
+            </div>
 
-        <label htmlFor="date">Date of the date</label>
-        <input
-          id="date"
-          type="date"
-          value={date}
-          min={todayString()}
-          onChange={(e) => setDate(e.target.value)}
-          required
-        />
+            {!gFree && (
+              <>
+                <label htmlFor="gbudget">
+                  Your budget: {formatMoney(gBudgetValue, setup.currency)}
+                </label>
+                <input
+                  id="gbudget"
+                  type="range"
+                  min={gCur.min}
+                  max={gCur.max}
+                  step={gCur.step}
+                  value={gBudgetValue}
+                  onChange={(e) => setGBudget(Number(e.target.value))}
+                />
+              </>
+            )}
 
-        <label htmlFor="start">Start time</label>
-        <input
-          id="start"
-          type="time"
-          value={startTime}
-          onChange={(e) => setStartTime(e.target.value)}
-          required
-        />
-
-        <fieldset>
-          <legend>Vibe</legend>
-          <div className="vibes">
-            {VIBES.map((v) => (
-              <button
-                key={v}
-                type="button"
-                className={v === vibe ? "vibe active" : "vibe"}
-                onClick={() => setVibe(v)}
-              >
-                {v}
-              </button>
-            ))}
+            <button
+              type="button"
+              className="primary join-btn"
+              onClick={submitGuest}
+              disabled={loading}
+            >
+              {loading ? "Working..." : "Add my answers"}
+            </button>
           </div>
-        </fieldset>
+        </section>
+      )}
 
-        <div className="actions">
-          <button type="submit" className="primary" disabled={loading}>
-            {loading ? "Planning..." : "Plan our date"}
+      {waiting && (
+        <section className="result">
+          <h2>Your answers are locked in 🔒</h2>
+          <p className="summary">
+            {role === "host"
+              ? "Send this link to your partner. They answer the same questions, and DateFlow blends both."
+              : "Waiting for the plan to be ready."}
+          </p>
+          <input
+            className="share-link"
+            readOnly
+            value={sessionLink(session.id)}
+            aria-label="Link for your partner"
+            onFocus={(e) => e.target.select()}
+          />
+          <button type="button" className="share-btn" onClick={copySessionLink}>
+            {linkCopied ? "Link copied ✓" : "Copy link"}
           </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => generate(true)}
-            disabled={(!stay && !location) || loading}
-          >
-            Surprise me
+          <p className="waiting">
+            <span className="dot"></span>
+            Waiting for your partner. We check every few seconds.
+          </p>
+          <button type="button" className="again-btn" onClick={resetAll}>
+            Plan another date
           </button>
-        </div>
-      </form>
+        </section>
+      )}
+
+      {session && !session.plan && !waiting && !needsGuestAnswers && (
+        <section className="result">
+          <h2>This session isn't ready yet</h2>
+          <p className="summary">Ask the person who made it to start a new one.</p>
+          <button type="button" className="again-btn" onClick={resetAll}>
+            Plan another date
+          </button>
+        </section>
+      )}
 
       {error && <p className="error">{error}</p>}
 
@@ -366,6 +727,8 @@ function App() {
               {plan.startTime ? " at " + formatTime(plan.startTime, 0) : ""}
             </p>
           )}
+
+          {showBlend && <p className="blend">{blendText}</p>}
 
           {plan.surprise && shown === 0 && (
             <p className="teaser">
@@ -460,6 +823,12 @@ function App() {
               aria-label="Shareable link"
               onFocus={(e) => e.target.select()}
             />
+          )}
+
+          {session && (
+            <button type="button" className="again-btn" onClick={resetAll}>
+              Plan another date
+            </button>
           )}
         </section>
       )}
