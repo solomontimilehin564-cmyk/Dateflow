@@ -16,6 +16,10 @@ const EMOJI = {
   Activity: "🎨",
   Dessert: "🍰",
   Picnic: "🧺",
+  Cook: "👩‍🍳",
+  Drinks: "🍹",
+  Game: "🎲",
+  Movie: "🎬",
   Finale: "✨",
 };
 
@@ -58,6 +62,7 @@ function mapsUrl(place) {
 }
 
 function App() {
+  const [stay, setStay] = useState(false);
   const [currency, setCurrency] = useState("USD");
   const [budget, setBudget] = useState(CURRENCIES.USD.start);
   const [free, setFree] = useState(false);
@@ -120,8 +125,9 @@ function App() {
         body: JSON.stringify({
           budget: free ? 0 : budget,
           free: free,
+          stay: stay,
           vibe: vibe,
-          location: location,
+          location: stay ? "Home" : location,
           hours: hours,
           surprise: surprise,
         }),
@@ -184,6 +190,15 @@ function App() {
     else if (shown === plan.stops.length) nextLabel = "Show the total cost";
   }
 
+  let summaryText = "";
+  if (plan) {
+    if (plan.surprise) {
+      summaryText = plan.stay ? "A secret date at home" : "A secret date in " + plan.location;
+    } else {
+      summaryText = plan.stay ? plan.vibe + " at home" : plan.vibe + " in " + plan.location;
+    }
+  }
+
   return (
     <main className="app">
       <h1 className="brand">
@@ -193,18 +208,49 @@ function App() {
       <p className="tagline">Tell us your vibe. We'll handle the date.</p>
 
       <form onSubmit={handleSubmit}>
-        <label htmlFor="location">Where are you?</label>
-        <input
-          id="location"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="City or neighborhood"
-          required
-        />
+        <fieldset>
+          <legend>Where is the date?</legend>
+          <div className="vibes">
+            <button
+              type="button"
+              className={!stay ? "vibe active" : "vibe"}
+              onClick={() => setStay(false)}
+            >
+              Go out
+            </button>
+            <button
+              type="button"
+              className={stay ? "vibe active" : "vibe"}
+              onClick={() => setStay(true)}
+            >
+              Stay in
+            </button>
+          </div>
+        </fieldset>
+
+        {!stay && (
+          <>
+            <label htmlFor="location">Where are you?</label>
+            <input
+              id="location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="City or neighborhood"
+              required
+            />
+          </>
+        )}
 
         <div className="free-toggle">
           <input id="free" type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} />
-          <label htmlFor="free"><strong>Free date</strong><small>Parks, views, walks and picnics. Costs nothing.</small></label>
+          <label htmlFor="free">
+            <strong>Free date</strong>
+            <small>
+              {stay
+                ? "Uses only what you already have at home."
+                : "Parks, views, walks and picnics. Costs nothing."}
+            </small>
+          </label>
         </div>
 
         {!free && (
@@ -296,7 +342,7 @@ function App() {
             type="button"
             className="secondary"
             onClick={() => generate(true)}
-            disabled={!location || loading}
+            disabled={(!stay && !location) || loading}
           >
             Surprise me
           </button>
@@ -311,9 +357,7 @@ function App() {
             {plan.surprise ? "Your surprise date is ready 🎁" : "Your date is ready… 👀"}
           </h2>
           <p className="summary">
-            {plan.surprise
-              ? "A secret date in " + plan.location
-              : plan.vibe + " in " + plan.location}
+            {summaryText}
             {plan.free ? " · Free" : ""}
           </p>
           {plan.date && (

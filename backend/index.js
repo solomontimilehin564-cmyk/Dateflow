@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const { geocode, addPlaces } = require("./places");
 const { FREE_PLANS } = require("./free");
+const { STAY_PLANS } = require("./stay");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -66,10 +67,11 @@ app.get("/api/health", (req, res) => {
 });
 
 app.post("/api/plan", async (req, res) => {
-  const { budget, vibe, location, hours, surprise, free } = req.body;
+  const { budget, vibe, location, hours, surprise, free, stay } = req.body;
   const isFree = Boolean(free);
+  const isStay = Boolean(stay);
 
-  if (!location || typeof location !== "string") {
+  if (!isStay && (!location || typeof location !== "string")) {
     return res.status(400).json({ error: "Location is required." });
   }
   if (!PLANS[vibe]) {
@@ -81,9 +83,9 @@ app.post("/api/plan", async (req, res) => {
     return res.status(400).json({ error: "Budget and hours must be positive numbers." });
   }
 
-  // Look up the location. A failed lookup falls back to the template stops.
+  // Look up the location for dates out. Stay-in dates need no map lookup.
   let point = null;
-  if (process.env.GEOAPIFY_KEY) {
+  if (!isStay && process.env.GEOAPIFY_KEY) {
     try {
       point = await geocode(location);
       if (!point) {
@@ -96,7 +98,10 @@ app.post("/api/plan", async (req, res) => {
     }
   }
 
-  const source = isFree ? FREE_PLANS : PLANS;
+  let source = PLANS;
+  if (isStay) source = STAY_PLANS;
+  else if (isFree) source = FREE_PLANS;
+
   const chosen = source[vibe].slice(0, stopCount(hoursNum));
   const totalShare = chosen.reduce((sum, s) => sum + s.share, 0) || 1;
   const minutesPerStop = Math.round((hoursNum * 60) / chosen.length);
@@ -120,15 +125,16 @@ app.post("/api/plan", async (req, res) => {
 
   res.json({
     vibe,
-    location: location.trim(),
+    location: isStay ? "Home" : location.trim(),
     budget: budgetNum,
     hours: hoursNum,
     surprise: Boolean(surprise),
     free: isFree,
+    stay: isStay,
     stops,
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`DateFlow API running on port ${PORT}`);
+  console.log("DateFlow API running on port " + PORT);
 });
