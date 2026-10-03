@@ -152,7 +152,10 @@ function App() {
 
   return (
     <main className="app">
-      <h1>DateFlow</h1>
+      <h1 className="brand">
+  <img src="/logo.svg" alt="" />
+  DateFlow
+</h1>
       <p className="tagline">Tell us your vibe. We'll handle the date.</p>
 
       <form onSubmit={handleSubmit}>
