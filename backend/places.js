@@ -18,7 +18,16 @@ async function geocode(text) {
   return point;
 }
 
-function categoriesFor(vibe, type) {
+function categoriesFor(vibe, type, free = false) {
+  if (free) {
+    const freeMap = {
+      "Warm-up": "leisure.park",
+      Picnic: "leisure.park",
+      Activity: "tourism.sights,tourism.attraction",
+      Finale: "tourism.attraction.viewpoint,beach,leisure.park",
+    };
+    return freeMap[type] || null;
+  }
   if (type === "Warm-up" && vibe === "Fancy") return "catering.bar";
   const map = {
     "Warm-up": "leisure.park,tourism.attraction",
@@ -75,15 +84,13 @@ async function findPlaces(categories, point, excluded, radius = 5000) {
 }
 
 // Attach a real nearby venue to each stop where one is found.
-async function addPlaces(stops, vibe, point) {
+async function addPlaces(stops, vibe, point, free = false) {
   const lists = await Promise.all(
-    stops.map((s) =>
-      findPlaces(
-        categoriesFor(vibe, s.type),
-        point,
-        excludedFor(vibe, s.type)
-      ).catch(() => [])
-    )
+    stops.map((s) => {
+      const cats = categoriesFor(vibe, s.type, free);
+      if (!cats) return Promise.resolve([]);
+      return findPlaces(cats, point, excludedFor(vibe, s.type)).catch(() => []);
+    })
   );
   const used = new Set();
   return stops.map((s, i) => {

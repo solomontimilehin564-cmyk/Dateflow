@@ -15,6 +15,7 @@ const EMOJI = {
   Dinner: "🍝",
   Activity: "🎨",
   Dessert: "🍰",
+  Picnic: "🧺",
   Finale: "✨",
 };
 
@@ -37,7 +38,7 @@ function todayString() {
   const d = new Date();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mm}-${dd}`;
+  return d.getFullYear() + "-" + mm + "-" + dd;
 }
 
 // "2026-10-03" -> "Saturday, October 3, 2026"
@@ -51,9 +52,15 @@ function formatDate(dateStr) {
   });
 }
 
+function mapsUrl(place) {
+  const query = encodeURIComponent(place.name + " " + place.address);
+  return "https://www.google.com/maps/search/?api=1&query=" + query;
+}
+
 function App() {
   const [currency, setCurrency] = useState("USD");
   const [budget, setBudget] = useState(CURRENCIES.USD.start);
+  const [free, setFree] = useState(false);
   const [vibe, setVibe] = useState("Romantic");
   const [location, setLocation] = useState("");
   const [hours, setHours] = useState(3);
@@ -79,7 +86,7 @@ function App() {
     const id = new URLSearchParams(window.location.search).get("d");
     if (!id) return;
     setLoading(true);
-    fetch(`${API_URL}/api/dates/${encodeURIComponent(id)}`)
+    fetch(API_URL + "/api/dates/" + encodeURIComponent(id))
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "We couldn't find that date.");
@@ -107,14 +114,21 @@ function App() {
     setShareUrl("");
     setCopied(false);
     try {
-      const res = await fetch(`${API_URL}/api/plan`, {
+      const res = await fetch(API_URL + "/api/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ budget, vibe, location, hours, surprise }),
+        body: JSON.stringify({
+          budget: free ? 0 : budget,
+          free: free,
+          vibe: vibe,
+          location: location,
+          hours: hours,
+          surprise: surprise,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Something went wrong.");
-      setPlan({ ...data, currency, startTime, date });
+      setPlan({ ...data, currency: currency, startTime: startTime, date: date });
     } catch (err) {
       setError(err.message || "Could not reach the server. Try again.");
     } finally {
@@ -144,14 +158,14 @@ function App() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`${API_URL}/api/dates`, {
+      const res = await fetch(API_URL + "/api/dates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(plan),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not save the date.");
-      const url = `${window.location.origin}${window.location.pathname}?d=${data.id}`;
+      const url = window.location.origin + window.location.pathname + "?d=" + data.id;
       setShareUrl(url);
       copyLink(url);
     } catch (err) {
@@ -188,32 +202,43 @@ function App() {
           required
         />
 
-        <fieldset>
-          <legend>Currency</legend>
-          <div className="vibes">
-            {Object.entries(CURRENCIES).map(([code, c]) => (
-              <button
-                key={code}
-                type="button"
-                className={code === currency ? "vibe active" : "vibe"}
-                onClick={() => chooseCurrency(code)}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+        <div className="free-toggle">
+          <input id="free" type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} />
+          <label htmlFor="free"><strong>Free date</strong><small>Parks, views, walks and picnics. Costs nothing.</small></label>
+        </div>
 
-        <label htmlFor="budget">Budget: {formatMoney(budget, currency)}</label>
-        <input
-          id="budget"
-          type="range"
-          min={cur.min}
-          max={cur.max}
-          step={cur.step}
-          value={budget}
-          onChange={(e) => setBudget(Number(e.target.value))}
-        />
+        {!free && (
+          <>
+            <fieldset>
+              <legend>Currency</legend>
+              <div className="vibes">
+                {Object.entries(CURRENCIES).map(([code, c]) => (
+                  <button
+                    key={code}
+                    type="button"
+                    className={code === currency ? "vibe active" : "vibe"}
+                    onClick={() => chooseCurrency(code)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <label htmlFor="budget">
+              Budget: {formatMoney(budget, currency)}
+            </label>
+            <input
+              id="budget"
+              type="range"
+              min={cur.min}
+              max={cur.max}
+              step={cur.step}
+              value={budget}
+              onChange={(e) => setBudget(Number(e.target.value))}
+            />
+          </>
+        )}
 
         <label htmlFor="hours">Time available</label>
         <select
@@ -287,13 +312,14 @@ function App() {
           </h2>
           <p className="summary">
             {plan.surprise
-              ? `A secret date in ${plan.location}`
-              : `${plan.vibe} in ${plan.location}`}
+              ? "A secret date in " + plan.location
+              : plan.vibe + " in " + plan.location}
+            {plan.free ? " · Free" : ""}
           </p>
           {plan.date && (
             <p className="when">
               📅 {formatDate(plan.date)}
-              {plan.startTime ? ` at ${formatTime(plan.startTime, 0)}` : ""}
+              {plan.startTime ? " at " + formatTime(plan.startTime, 0) : ""}
             </p>
           )}
 
@@ -325,9 +351,7 @@ function App() {
                           </p>
                           <a
                             className="place-link"
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                              `${s.place.name} ${s.place.address}`
-                            )}`}
+                            href={mapsUrl(s.place)}
                             target="_blank"
                             rel="noreferrer"
                           >
@@ -363,7 +387,9 @@ function App() {
 
           {shown > plan.stops.length && (
             <p className="total">
-              {formatMoney(total, plan.currency)} estimated
+              {plan.free
+                ? "Totally free 🎉"
+                : formatMoney(total, plan.currency) + " estimated"}
             </p>
           )}
 

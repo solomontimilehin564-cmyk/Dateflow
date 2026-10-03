@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { geocode, addPlaces } = require("./places");
+const { FREE_PLANS } = require("./free");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -65,7 +66,8 @@ app.get("/api/health", (req, res) => {
 });
 
 app.post("/api/plan", async (req, res) => {
-  const { budget, vibe, location, hours, surprise } = req.body;
+  const { budget, vibe, location, hours, surprise, free } = req.body;
+  const isFree = Boolean(free);
 
   if (!location || typeof location !== "string") {
     return res.status(400).json({ error: "Location is required." });
@@ -73,9 +75,9 @@ app.post("/api/plan", async (req, res) => {
   if (!PLANS[vibe]) {
     return res.status(400).json({ error: "Unknown vibe." });
   }
-  const budgetNum = Number(budget);
+  const budgetNum = isFree ? 0 : Number(budget);
   const hoursNum = Number(hours);
-  if (!budgetNum || budgetNum < 0 || !hoursNum || hoursNum < 1) {
+  if ((!isFree && !budgetNum) || budgetNum < 0 || !hoursNum || hoursNum < 1) {
     return res.status(400).json({ error: "Budget and hours must be positive numbers." });
   }
 
@@ -94,7 +96,8 @@ app.post("/api/plan", async (req, res) => {
     }
   }
 
-  const chosen = PLANS[vibe].slice(0, stopCount(hoursNum));
+  const source = isFree ? FREE_PLANS : PLANS;
+  const chosen = source[vibe].slice(0, stopCount(hoursNum));
   const totalShare = chosen.reduce((sum, s) => sum + s.share, 0) || 1;
   const minutesPerStop = Math.round((hoursNum * 60) / chosen.length);
 
@@ -104,12 +107,12 @@ app.post("/api/plan", async (req, res) => {
     title: s.title,
     note: s.note,
     minutes: minutesPerStop,
-    cost: Math.round((budgetNum * s.share) / totalShare),
+    cost: isFree ? 0 : Math.round((budgetNum * s.share) / totalShare),
   }));
 
   if (point) {
     try {
-      stops = await addPlaces(stops, vibe, point);
+      stops = await addPlaces(stops, vibe, point, isFree);
     } catch (err) {
       console.error("Venue search failed:", err.message);
     }
@@ -121,6 +124,7 @@ app.post("/api/plan", async (req, res) => {
     budget: budgetNum,
     hours: hoursNum,
     surprise: Boolean(surprise),
+    free: isFree,
     stops,
   });
 });
