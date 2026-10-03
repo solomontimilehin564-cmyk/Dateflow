@@ -32,12 +32,32 @@ function formatTime(startTime, offsetMinutes) {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+// Today's date as YYYY-MM-DD in the user's own time zone.
+function todayString() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+// "2026-10-03" -> "Saturday, October 3, 2026"
+function formatDate(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 function App() {
   const [currency, setCurrency] = useState("USD");
   const [budget, setBudget] = useState(CURRENCIES.USD.start);
   const [vibe, setVibe] = useState("Romantic");
   const [location, setLocation] = useState("");
   const [hours, setHours] = useState(3);
+  const [date, setDate] = useState(todayString());
   const [startTime, setStartTime] = useState("18:00");
   const [plan, setPlan] = useState(null);
   const [shown, setShown] = useState(0);
@@ -94,7 +114,7 @@ function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Something went wrong.");
-      setPlan({ ...data, currency, startTime });
+      setPlan({ ...data, currency, startTime, date });
     } catch (err) {
       setError(err.message || "Could not reach the server. Try again.");
     } finally {
@@ -153,9 +173,9 @@ function App() {
   return (
     <main className="app">
       <h1 className="brand">
-  <img src="/logo.svg" alt="" />
-  DateFlow
-</h1>
+        <img src="/logo.svg" alt="" />
+        DateFlow
+      </h1>
       <p className="tagline">Tell us your vibe. We'll handle the date.</p>
 
       <form onSubmit={handleSubmit}>
@@ -207,6 +227,16 @@ function App() {
           <option value={6}>6 hours</option>
           <option value={8}>Full day</option>
         </select>
+
+        <label htmlFor="date">Date of the date</label>
+        <input
+          id="date"
+          type="date"
+          value={date}
+          min={todayString()}
+          onChange={(e) => setDate(e.target.value)}
+          required
+        />
 
         <label htmlFor="start">Start time</label>
         <input
@@ -260,6 +290,12 @@ function App() {
               ? `A secret date in ${plan.location}`
               : `${plan.vibe} in ${plan.location}`}
           </p>
+          {plan.date && (
+            <p className="when">
+              📅 {formatDate(plan.date)}
+              {plan.startTime ? ` at ${formatTime(plan.startTime, 0)}` : ""}
+            </p>
+          )}
 
           {plan.surprise && shown === 0 && (
             <p className="teaser">
@@ -281,29 +317,29 @@ function App() {
                     <div className="stop-emoji">{EMOJI[s.type] || "💕"}</div>
                     <div>
                       <small>Stop {s.order}</small>
-                    {s.place ? (
-  <>
-    <strong>{s.place.name}</strong>
-    <p>
-      {s.title}. {s.note}
-    </p>
-    <a
-      className="place-link"
-      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        `${s.place.name} ${s.place.address}`
-      )}`}
-      target="_blank"
-      rel="noreferrer"
-    >
-      Open in Google Maps
-    </a>
-  </>
-) : (
-  <>
-    <strong>{s.title}</strong>
-    <p>{s.note}</p>
-  </>
-)}
+                      {s.place ? (
+                        <>
+                          <strong>{s.place.name}</strong>
+                          <p>
+                            {s.title}. {s.note}
+                          </p>
+                          <a
+                            className="place-link"
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                              `${s.place.name} ${s.place.address}`
+                            )}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Open in Google Maps
+                          </a>
+                        </>
+                      ) : (
+                        <>
+                          <strong>{s.title}</strong>
+                          <p>{s.note}</p>
+                        </>
+                      )}
                       <small>
                         {formatTime(plan.startTime, offset)} ·{" "}
                         {s.cost === 0 ? "Free" : formatMoney(s.cost, plan.currency)}
