@@ -278,8 +278,29 @@ function App() {
                     <div className="stop-emoji">{EMOJI[s.type] || "💕"}</div>
                     <div>
                       <small>Stop {s.order}</small>
-                      <strong>{s.title}</strong>
-                      <p>{s.note}</p>
+                    {s.place ? (
+  <>
+    <strong>{s.place.name}</strong>
+    <p>
+      {s.title}. {s.note}
+    </p>
+    <a
+      className="place-link"
+      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        `${s.place.name} ${s.place.address}`
+      )}`}
+      target="_blank"
+      rel="noreferrer"
+    >
+      Open in Google Maps
+    </a>
+  </>
+) : (
+  <>
+    <strong>{s.title}</strong>
+    <p>{s.note}</p>
+  </>
+)}
                       <small>
                         {formatTime(plan.startTime, offset)} ·{" "}
                         {s.cost === 0 ? "Free" : formatMoney(s.cost, plan.currency)}

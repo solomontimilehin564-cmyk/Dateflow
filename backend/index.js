@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const { geocode, addPlaces } = require("./places");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,7 +37,7 @@ const PLANS = {
     { type: "Warm-up", title: "Cocktails or mocktails", note: "Dress up and start at a stylish bar.", share: 0.2 },
     { type: "Dinner", title: "Fine dining", note: "A tasting menu or a top-rated restaurant. Book ahead.", share: 0.5 },
     { type: "Activity", title: "Live music, theater or gallery", note: "Something cultural after dinner.", share: 0.2 },
-    { type: "Dessert", title: "Dessert and coffee", note: "A elegant place to end the evening.", share: 0.1 },
+    { type: "Dessert", title: "Dessert and coffee", note: "An elegant place to end the evening.", share: 0.1 },
     { type: "Finale", title: "City lights walk", note: "A short walk in your best outfits.", share: 0 },
   ],
   Spontaneous: [
@@ -63,7 +64,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.post("/api/plan", (req, res) => {
+app.post("/api/plan", async (req, res) => {
   const { budget, vibe, location, hours, surprise } = req.body;
 
   if (!location || typeof location !== "string") {
@@ -78,11 +79,26 @@ app.post("/api/plan", (req, res) => {
     return res.status(400).json({ error: "Budget and hours must be positive numbers." });
   }
 
+  // Look up the location. A failed lookup falls back to the template stops.
+  let point = null;
+  if (process.env.GEOAPIFY_KEY) {
+    try {
+      point = await geocode(location);
+      if (!point) {
+        return res.status(400).json({
+          error: "We couldn't find that location. Try a city name like Istanbul or Lagos.",
+        });
+      }
+    } catch (err) {
+      console.error("Location lookup failed:", err.message);
+    }
+  }
+
   const chosen = PLANS[vibe].slice(0, stopCount(hoursNum));
   const totalShare = chosen.reduce((sum, s) => sum + s.share, 0) || 1;
   const minutesPerStop = Math.round((hoursNum * 60) / chosen.length);
 
-  const stops = chosen.map((s, i) => ({
+  let stops = chosen.map((s, i) => ({
     order: i + 1,
     type: s.type,
     title: s.title,
@@ -90,6 +106,14 @@ app.post("/api/plan", (req, res) => {
     minutes: minutesPerStop,
     cost: Math.round((budgetNum * s.share) / totalShare),
   }));
+
+  if (point) {
+    try {
+      stops = await addPlaces(stops, vibe, point);
+    } catch (err) {
+      console.error("Venue search failed:", err.message);
+    }
+  }
 
   res.json({
     vibe,

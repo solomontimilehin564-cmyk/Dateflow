@@ -325,3 +325,13 @@ button {
   margin-top: 12px;
   font-size: 0.9rem;
 }
+.place-link {
+  display: inline-block;
+  margin: 2px 0 6px;
+  font-weight: 600;
+  color: var(--violet);
+}
+
+.place-link:hover {
+  color: var(--pink);
+}
