@@ -24,28 +24,50 @@ function categoriesFor(vibe, type) {
     "Warm-up": "leisure.park,tourism.attraction",
     "Fuel up": "catering.fast_food,catering.restaurant",
     Dinner: "catering.restaurant",
-    Activity: "entertainment,tourism.attraction",
+    Activity:
+      "entertainment.culture,entertainment.cinema,entertainment.museum,entertainment.escape_game,entertainment.bowling_alley,tourism.attraction",
     Dessert: "catering.cafe,catering.ice_cream",
     Finale: "tourism.attraction,leisure.park",
   };
   return map[type] || "catering.restaurant";
 }
 
-async function findPlaces(categories, point, radius = 5000) {
+// Category words that should never appear for this kind of stop.
+function excludedFor(vibe, type) {
+  const always = ["adult", "nightclub", "casino", "gambling", "brothel"];
+  if (type === "Warm-up" && vibe === "Fancy") return always;
+  const noDrinking = [...always, "pub", "bar"];
+  if (type === "Dinner") return [...noDrinking, "fast_food"];
+  return noDrinking;
+}
+
+function hasExcluded(categories, excluded) {
+  return categories.some((c) =>
+    String(c)
+      .split(".")
+      .some((part) => excluded.includes(part))
+  );
+}
+
+async function findPlaces(categories, point, excluded, radius = 5000) {
   const url =
     `${BASE}/v2/places?categories=${categories}` +
     `&filter=circle:${point.lon},${point.lat},${radius}` +
     `&bias=proximity:${point.lon},${point.lat}` +
-    `&limit=20&apiKey=${process.env.GEOAPIFY_KEY}`;
+    `&limit=30&apiKey=${process.env.GEOAPIFY_KEY}`;
   const res = await fetch(url);
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error(`Places search failed (${res.status}) for ${categories}`);
+    return [];
+  }
 
   const data = await res.json();
   return (data.features || [])
     .map((f) => f.properties)
-    .filter((p) => p.name)
+    .filter((p) => p.name && !/^\d+$/.test(String(p.name).trim()))
+    .filter((p) => !hasExcluded(p.categories || [], excluded))
     .map((p) => ({
-      name: p.name,
+      name: String(p.name),
       address: p.address_line2 || p.formatted || "",
       lat: p.lat,
       lon: p.lon,
@@ -56,7 +78,11 @@ async function findPlaces(categories, point, radius = 5000) {
 async function addPlaces(stops, vibe, point) {
   const lists = await Promise.all(
     stops.map((s) =>
-      findPlaces(categoriesFor(vibe, s.type), point).catch(() => [])
+      findPlaces(
+        categoriesFor(vibe, s.type),
+        point,
+        excludedFor(vibe, s.type)
+      ).catch(() => [])
     )
   );
   const used = new Set();
