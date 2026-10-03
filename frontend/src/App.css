@@ -338,11 +338,12 @@ button {
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 2px;
 }
 
 .brand img {
-  width: 1em;
-  height: 1em;
+  width: 2em;
+  height: 2em;
+  margin-right: -6px;
   filter: drop-shadow(0 4px 0 rgba(36, 10, 58, 0.25));
 }
