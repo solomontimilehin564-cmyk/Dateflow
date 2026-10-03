@@ -1,6 +1,7 @@
 const { geocode, addPlaces } = require("./places");
 const { FREE_PLANS } = require("./free");
 const { STAY_PLANS } = require("./stay");
+const { cleanPrefs } = require("./prefs");
 
 // Each vibe has up to 5 stops. "share" is the fraction of the budget for that stop.
 const PLANS = {
@@ -53,6 +54,7 @@ async function buildPlan(input) {
   const { budget, vibe, location, hours, surprise, free, stay } = input;
   const isFree = Boolean(free);
   const isStay = Boolean(stay);
+  const prefs = cleanPrefs(input.prefs);
 
   if (!isStay && (!location || typeof location !== "string")) {
     return { status: 400, error: "Location is required." };
@@ -101,7 +103,7 @@ async function buildPlan(input) {
 
   if (point) {
     try {
-      stops = await addPlaces(stops, vibe, point, isFree);
+      stops = await addPlaces(stops, vibe, point, isFree, prefs);
     } catch (err) {
       console.error("Venue search failed:", err.message);
     }

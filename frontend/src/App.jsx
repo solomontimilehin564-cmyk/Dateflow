@@ -17,6 +17,40 @@ const ADVENTURE_LABELS = [
   "All in",
 ];
 
+const CUISINE_OPTIONS = [
+  ["italian", "Italian"],
+  ["turkish", "Turkish"],
+  ["pizza", "Pizza"],
+  ["burger", "Burgers"],
+  ["seafood", "Seafood"],
+  ["steak", "Steak"],
+  ["kebab", "Kebab"],
+  ["indian", "Indian"],
+  ["chinese", "Chinese"],
+  ["japanese", "Japanese"],
+  ["mexican", "Mexican"],
+  ["local", "Local / regional"],
+];
+
+const DIET_OPTIONS = [
+  ["vegetarian", "Vegetarian"],
+  ["halal", "Halal"],
+];
+
+const ACTIVITY_OPTIONS = [
+  ["outdoors", "Outdoors"],
+  ["culture", "Museums and art"],
+  ["games", "Games and fun"],
+  ["movies", "Movies"],
+];
+
+const LABELS = {};
+[...CUISINE_OPTIONS, ...DIET_OPTIONS, ...ACTIVITY_OPTIONS].forEach((o) => {
+  LABELS[o[0]] = o[1];
+});
+
+const EMPTY_PREFS = { cuisines: [], avoid: [], diet: [], activities: [] };
+
 const EMOJI = {
   "Warm-up": "🌅",
   "Fuel up": "🌮",
@@ -100,6 +134,76 @@ async function postJson(path, body) {
   return data;
 }
 
+function toggleIn(list, id) {
+  return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+}
+
+function namesOf(ids) {
+  return ids.map((id) => LABELS[id] || id).join(", ");
+}
+
+function prefsLine(p) {
+  if (!p) return "";
+  const parts = [];
+  if (p.cuisines.length) parts.push("Food: " + namesOf(p.cuisines));
+  if (p.avoid.length) parts.push("Skipping: " + namesOf(p.avoid));
+  if (p.diet.length) parts.push("Diet: " + namesOf(p.diet));
+  if (p.activities.length) parts.push("Activities: " + namesOf(p.activities));
+  let line = parts.join(" · ");
+  if (line && p.diet.length) {
+    line += ". Dietary needs are matched when the map has the info, so confirm with the venue.";
+  }
+  return line;
+}
+
+function PrefsPicker({ prefs, onChange }) {
+  function toggle(group, id) {
+    const next = { ...prefs, [group]: toggleIn(prefs[group], id) };
+    if (group === "cuisines" && next.cuisines.includes(id)) {
+      next.avoid = next.avoid.filter((x) => x !== id);
+    }
+    if (group === "avoid" && next.avoid.includes(id)) {
+      next.cuisines = next.cuisines.filter((x) => x !== id);
+    }
+    onChange(next);
+  }
+
+  function chips(group, options, cls) {
+    return (
+      <div className="chips">
+        {options.map((o) => {
+          const on = prefs[group].includes(o[0]);
+          return (
+            <button
+              key={o[0]}
+              type="button"
+              aria-pressed={on}
+              className={on ? "chip " + cls : "chip"}
+              onClick={() => toggle(group, o[0])}
+            >
+              {o[1]}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <details className="prefs">
+      <summary>Food and activity preferences (optional)</summary>
+      <p className="pref-title">Food you love</p>
+      {chips("cuisines", CUISINE_OPTIONS, "on")}
+      <p className="pref-title">Food to skip</p>
+      {chips("avoid", CUISINE_OPTIONS, "skip")}
+      <p className="pref-title">Dietary needs</p>
+      {chips("diet", DIET_OPTIONS, "on")}
+      <p className="pref-title">Activities you enjoy</p>
+      {chips("activities", ACTIVITY_OPTIONS, "on")}
+    </details>
+  );
+}
+
 function App() {
   const [stay, setStay] = useState(false);
   const [together, setTogether] = useState(false);
@@ -108,6 +212,7 @@ function App() {
   const [free, setFree] = useState(false);
   const [vibe, setVibe] = useState("Romantic");
   const [adventure, setAdventure] = useState(3);
+  const [prefs, setPrefs] = useState(EMPTY_PREFS);
   const [location, setLocation] = useState("");
   const [hours, setHours] = useState(3);
   const [date, setDate] = useState(todayString());
@@ -128,6 +233,7 @@ function App() {
   const [gAdventure, setGAdventure] = useState(3);
   const [gFree, setGFree] = useState(false);
   const [gBudget, setGBudget] = useState(null);
+  const [gPrefs, setGPrefs] = useState(EMPTY_PREFS);
 
   const cur = CURRENCIES[currency];
   const setup = session ? session.setup : null;
@@ -234,6 +340,7 @@ function App() {
         location: stay ? "Home" : location,
         hours: hours,
         surprise: surprise,
+        prefs: stay ? EMPTY_PREFS : prefs,
       });
       setPlan({ ...data, currency: currency, startTime: startTime, date: date });
     } catch (err) {
@@ -268,6 +375,7 @@ function App() {
           vibe: vibe,
           adventure: adventure,
           free: free,
+          prefs: stay ? EMPTY_PREFS : prefs,
         },
       });
       window.history.pushState({}, "", "?s=" + created.id);
@@ -291,6 +399,7 @@ function App() {
           vibe: gVibe,
           adventure: gAdventure,
           free: gFree,
+          prefs: setup.stay ? EMPTY_PREFS : gPrefs,
         },
       });
       setSession(state);
@@ -322,6 +431,7 @@ function App() {
     setLinkCopied(false);
     setGBudget(null);
     setGFree(false);
+    setGPrefs(EMPTY_PREFS);
     window.history.pushState({}, "", window.location.pathname);
   }
 
@@ -381,6 +491,7 @@ function App() {
   }
 
   let blendText = "";
+  let tastesText = "";
   if (plan && plan.blend) {
     const b = plan.blend;
     blendText = "💞 Blended from " + b.vibes[0] + " + " + b.vibes[1];
@@ -388,6 +499,7 @@ function App() {
     blendText += b.free
       ? ". One of you wanted a free date, so it costs nothing."
       : ". Budget set to the lower of your two.";
+    tastesText = prefsLine(b.prefs);
   }
   const showBlend = plan && plan.blend && (!plan.surprise || shown > plan.stops.length);
 
@@ -573,6 +685,8 @@ function App() {
             </>
           )}
 
+          {!stay && <PrefsPicker prefs={prefs} onChange={setPrefs} />}
+
           <div className="actions">
             <button type="submit" className="primary" disabled={loading}>
               {loading ? "Working..." : together ? "Start our session" : "Plan our date"}
@@ -599,9 +713,7 @@ function App() {
             📅 {formatDate(setup.date)} at {formatTime(setup.startTime, 0)}
           </p>
           <p className="hint">
-            {setup.surprise
-              ? "This one is a surprise date. "
-              : ""}
+            {setup.surprise ? "This one is a surprise date. " : ""}
             Your answers stay private until the plan is ready.
           </p>
 
@@ -659,6 +771,8 @@ function App() {
                 />
               </>
             )}
+
+            {!setup.stay && <PrefsPicker prefs={gPrefs} onChange={setGPrefs} />}
 
             <button
               type="button"
@@ -729,6 +843,7 @@ function App() {
           )}
 
           {showBlend && <p className="blend">{blendText}</p>}
+          {showBlend && tastesText && <p className="blend soft">{tastesText}</p>}
 
           {plan.surprise && shown === 0 && (
             <p className="teaser">

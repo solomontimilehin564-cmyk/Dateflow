@@ -152,6 +152,53 @@ button {
 .vibes .vibe.active:nth-child(4) { background: var(--violet); }
 .vibes .vibe.active:nth-child(5) { background: var(--sun); color: var(--plum); }
 
+.prefs {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fbf8ff;
+  border: 2px solid #e3d6f5;
+}
+
+.prefs summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pref-title {
+  margin: 14px 0 6px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 7px 14px;
+  border: 2px solid #e3d6f5;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--plum);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.chip.on {
+  background: var(--violet);
+  border-color: var(--violet);
+  color: #fff;
+}
+
+.chip.skip {
+  background: #8a1c1c;
+  border-color: #8a1c1c;
+  color: #fff;
+  text-decoration: line-through;
+}
+
 .actions {
   display: flex;
   gap: 12px;
@@ -247,6 +294,13 @@ button {
   background: #fff0f3;
   border: 2px solid var(--pink);
   font-weight: 500;
+}
+
+.blend.soft {
+  margin-top: 8px;
+  background: #efe7ff;
+  border-color: var(--violet);
+  font-size: 0.95rem;
 }
 
 .join-fields {

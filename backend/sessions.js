@@ -3,11 +3,13 @@ const crypto = require("crypto");
 const { Pool } = require("pg");
 const { buildPlan, VIBES } = require("./planner");
 const { geocode } = require("./places");
+const { cleanPrefs } = require("./prefs");
 
 const router = express.Router();
 
 const CURRENCIES = ["USD", "NGN"];
 const ID_RE = /^[\w-]{1,20}$/;
+const EMPTY_PREFS = { cuisines: [], avoid: [], diet: [], activities: [] };
 
 // Lower number = calmer, higher number = more adventurous.
 const ENERGY = { Chill: 1, Romantic: 2, Fancy: 3, Spontaneous: 4, Adventurous: 5 };
@@ -42,7 +44,34 @@ function cleanAnswers(raw) {
   if (!VIBES.includes(vibe)) return null;
   if (!Number.isInteger(adventure) || adventure < 1 || adventure > 5) return null;
   if (!free && (!budget || budget < 0 || budget > 100000000)) return null;
-  return { vibe, adventure, free, budget };
+  return { vibe, adventure, free, budget, prefs: cleanPrefs(raw.prefs) };
+}
+
+function intersect(a, b) {
+  return a.filter((x) => b.includes(x));
+}
+
+function union(a, b) {
+  return [...new Set([...a, ...b])];
+}
+
+// Shared picks win. If there are none, use everything either person chose.
+function mergeList(a, b) {
+  const shared = intersect(a, b);
+  return shared.length > 0 ? shared : union(a, b);
+}
+
+function mergePrefs(a, b) {
+  const avoid = union(a.avoid, b.avoid);
+  const cuisines = mergeList(a.cuisines, b.cuisines).filter(
+    (c) => !avoid.includes(c)
+  );
+  return {
+    cuisines: cuisines,
+    avoid: avoid,
+    diet: union(a.diet, b.diet),
+    activities: mergeList(a.activities, b.activities),
+  };
 }
 
 // Blend two sets of answers into one set of plan inputs.
@@ -59,16 +88,20 @@ function combine(a, b) {
     else if (distB === distA && Math.random() < 0.5) vibe = b.vibe;
   }
 
+  const prefs = mergePrefs(a.prefs || EMPTY_PREFS, b.prefs || EMPTY_PREFS);
+
   return {
     budget,
     free,
     vibe,
+    prefs,
     blend: {
       vibes: [a.vibe, b.vibe],
       vibe,
       adventure: Math.round(adventure * 10) / 10,
       free,
       budget,
+      prefs,
     },
   };
 }
@@ -87,6 +120,7 @@ async function ensurePlan(row) {
     hours: s.hours,
     surprise: s.surprise,
     stay: s.stay,
+    prefs: combined.prefs,
   });
   if (result.error) throw new Error(result.error);
 
