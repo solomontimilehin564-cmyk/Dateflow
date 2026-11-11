@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Date ideas, plans and budgets from DateFlow.">
+<title>DateFlow Journal</title>
+
+<style>
+html,body{margin:0}
+/* Layout: matches the DateFlow app. Gradient page, white rounded cards with a pink top edge, red pill buttons, dashed pink ticket stubs. Single look by design. */
+:root {
+  --bg: #9A1FA6;
+  --grad: linear-gradient(135deg, #EE4060 0%, #C41E7A 30%, #A81FA5 62%, #6C1FA8 100%);
+  --surface: #FFFFFF;
+  --ink: #2A0B3D;
+  --muted: #6B5A80;
+  --line: #E3D9F5;
+  --field: #FAF7FF;
+  --red: #E8203F;
+  --red-ink: #FFFFFF;
+  --pink: #FFF0F3;
+  --pink-edge: #FF9AA8;
+  --plum: #A01FA8;
+  --pale: #FFD6DF;
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--grad) fixed; background-color: var(--bg); color: #FFFFFF;
+  font-family: var(--font); font-size: 16px; line-height: 1.6; min-height: 100vh;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 56px;
+}
+a { color: inherit; }
+:focus-visible { outline: 3px solid #FFFFFF; outline-offset: 3px; border-radius: 6px; }
+.wrap { max-width: 1040px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--font); line-height: 1.1; text-wrap: balance; margin: 0; letter-spacing: -0.02em; }
+
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 22px 6px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #FFFFFF; }
+.brand svg { width: 52px; height: auto; flex: none; }
+.brand b { font-weight: 800; font-size: 40px; letter-spacing: -0.035em; line-height: 1; text-shadow: 0 3px 0 rgba(80, 0, 90, 0.25); }
+.brand span { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; border: 1.5px solid rgba(255,255,255,0.65); border-radius: 999px; padding: 4px 11px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; text-decoration: none; cursor: pointer;
+  background: var(--red); color: var(--red-ink); border: 0; border-radius: 999px;
+  padding: 12px 22px; font: 600 15px/1 var(--font);
+}
+.btn:hover { filter: brightness(1.07); }
+.btn.light { background: #FFFFFF; color: var(--ink); }
+
+.hero { padding-block: 34px 28px; display: grid; gap: 20px; }
+.hero h1 { font-size: clamp(36px, 6.5vw, 66px); font-weight: 800; max-width: 15ch; }
+.hero h1 em { font-style: normal; color: var(--pale); }
+.hero p { margin: 0; max-width: 52ch; color: rgba(255,255,255,0.92); font-size: 19px; font-weight: 500; }
+.tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.search {
+  flex: 1 1 240px; min-width: 0; background: var(--field); color: var(--ink);
+  border: 2px solid var(--line); border-radius: 999px; padding: 12px 20px; font: 400 16px var(--font);
+}
+.search::placeholder { color: #8A7BA0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  background: var(--field); color: var(--ink); border: 2px solid var(--line); border-radius: 999px;
+  padding: 9px 18px; font: 500 15px var(--font); cursor: pointer;
+}
+.chip:hover { border-color: var(--plum); }
+.chip[aria-pressed="true"] { background: var(--red); color: #FFFFFF; border-color: var(--red); box-shadow: 0 0 0 2px #FFFFFF; }
+
+.stub {
+  display: flex; flex-direction: column; background: var(--surface); color: var(--ink);
+  border-top: 8px solid var(--pink-edge); border-radius: 24px; overflow: hidden; text-decoration: none; min-width: 0;
+  box-shadow: 0 16px 40px rgba(50, 0, 80, 0.30);
+}
+.stub .top { padding: 20px 22px 18px; display: grid; gap: 10px; flex: 1; align-content: start; }
+.tag { font: 700 12px var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: #B01C85; }
+.stub h3 { font-size: 24px; font-weight: 700; }
+.stub .top p { margin: 0; color: var(--muted); font-size: 15px; }
+.perf { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 2px dashed var(--red); background: var(--pink); }
+.perf div { padding: 11px 16px; display: grid; gap: 2px; min-width: 0; }
+.perf div + div { border-left: 1.5px solid #F6C6D0; }
+.perf small { font: 700 10.5px var(--font); letter-spacing: 0.1em; text-transform: uppercase; color: #B01C85; }
+.perf span { font: 600 15px var(--font); color: var(--ink); overflow-wrap: anywhere; }
+.feature { display: grid; grid-template-columns: 1.15fr 1fr; margin-bottom: 22px; }
+.feature .top { padding: 28px; }
+.feature h3 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; }
+.feature .top p { font-size: 17px; }
+.feature .perf { grid-template-columns: 1fr; border-top: 0; border-left: 2px dashed var(--red); align-content: center; }
+.feature .perf div + div { border-left: 0; border-top: 1.5px solid #F6C6D0; }
+.feature .perf div { padding: 16px 24px; }
+.feature .perf span { font-size: 19px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 22px; }
+.meta { font: 500 13px var(--font); color: var(--muted); }
+.empty { padding: 40px 0; color: rgba(255,255,255,0.92); font-size: 18px; }
+
+.back { display: inline-block; margin-block: 14px 20px; font: 600 15px var(--font); color: #FFFFFF; text-decoration: none; }
+.back:hover { text-decoration: underline; }
+.article {
+  max-width: 760px; margin: 0 auto; background: var(--surface); color: var(--ink);
+  border-top: 12px solid var(--pink-edge); border-radius: 30px; padding: 34px clamp(20px, 5vw, 48px) 40px;
+  box-shadow: 0 20px 50px rgba(50, 0, 80, 0.32);
+}
+.article h1 { font-size: clamp(32px, 5.5vw, 52px); font-weight: 800; margin-block: 10px 14px; }
+.article .dek { font-size: 20px; color: var(--muted); margin: 0 0 14px; }
+.article .perf { border: 2px dashed var(--red); border-radius: 16px; margin-block: 22px 30px; overflow: hidden; }
+.article h2 { font-size: 27px; font-weight: 700; margin-block: 36px 10px; }
+.article p { margin: 0 0 18px; font-size: 18px; line-height: 1.7; max-width: 65ch; }
+.article ul { padding-left: 22px; margin: 0 0 18px; font-size: 18px; line-height: 1.7; }
+.article li { margin-bottom: 6px; padding-left: 4px; }
+.timeline { list-style: none; padding: 0 !important; margin: 8px 0 26px; border-left: 3px solid var(--plum); }
+.timeline li { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; padding: 4px 0 14px 20px; margin: 0; position: relative; }
+.timeline li::before { content: ""; position: absolute; left: -9px; top: 11px; width: 13px; height: 13px; border-radius: 50%; background: var(--surface); border: 3px solid var(--red); }
+.timeline time { font: 700 15px var(--font); color: var(--plum); padding-top: 2px; font-variant-numeric: tabular-nums; }
+.cta { margin-top: 44px; padding: 28px; border-radius: 20px; background: var(--grad); color: #FFFFFF; display: grid; gap: 12px; justify-items: start; }
+.cta h2 { margin: 0; font-size: 28px; }
+.cta p { margin: 0; font-size: 17px; }
+.more { margin-top: 52px; }
+.more h2 { font-size: 26px; margin-bottom: 18px; color: #FFFFFF; }
+
+footer { margin-top: 64px; padding-top: 22px; border-top: 1.5px solid rgba(255,255,255,0.35); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; color: rgba(255,255,255,0.92); font-size: 14px; }
+
+@media (max-width: 720px) {
+  .feature { grid-template-columns: 1fr; }
+  .feature .perf { grid-template-columns: repeat(3, minmax(0, 1fr)); border-left: 0; border-top: 2px dashed var(--red); }
+  .feature .perf div + div { border-top: 0; border-left: 1.5px solid #F6C6D0; }
+  .feature .perf div { padding: 11px 14px; }
+  .feature .perf span { font-size: 15px; }
+  .brand b { font-size: 32px; }
+  .brand svg { width: 42px; }
+  .timeline li { grid-template-columns: 1fr; gap: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stub { transition: transform .15s; }
+  .stub:hover { transform: translateY(-3px); }
+}
+</style>
+
+
+<div class="wrap">
+  <header class="bar">
+    <a class="brand" href="#" aria-label="DateFlow Journal home"><svg viewBox="0 0 66 62" aria-hidden="true"><defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F0405E"/><stop offset="1" stop-color="#9A2BB0"/></linearGradient></defs><path d="M33 59C10 43 2 31 2 20 2 9 9 2 19 2c6 0 11 3 14 8 3-5 8-8 14-8 10 0 17 7 17 18 0 11-8 23-31 39z" fill="url(#hg)"/><circle cx="17" cy="22" r="5.5" fill="#fff"/><circle cx="25" cy="27" r="2.6" fill="#fff"/><circle cx="33" cy="23" r="3" fill="#fff"/><circle cx="41" cy="24" r="2.6" fill="#fff"/><circle cx="48" cy="29" r="5.5" fill="#FFD6DF"/></svg><b>DateFlow</b><span>Journal</span></a>
+    <a class="btn light" href="https://dateflow-eight.vercel.app/" target="_blank" rel="noopener">Plan a date</a>
+  </header>
+  <main id="view"></main>
+  <footer>
+    <span>Tell us your vibe. We'll handle the date.</span>
+    <a href="https://dateflow-eight.vercel.app/" target="_blank" rel="noopener">Open the planner</a>
+  </footer>
+</div>
+
+<script>
+var APP = "https://dateflow-eight.vercel.app/";
+
+/* Each post carries the same three inputs the planner asks for: vibe, time, budget. */
+var POSTS = [
+  {
+    id: "two-hour-date", cat: "Planning", title: "How to plan a great date in two hours",
+    dek: "Two hours is enough if you stop trying to fit in three activities. Pick one anchor and let the rest breathe.",
+    vibe: "Chill", time: "2 hours", budget: "$40", date: "Nov 10, 2026",
+    body: [
+      {p: "Short dates get a bad reputation. People assume they feel rushed, but a two-hour window is often better than a full evening. There is a clear end, nobody runs out of things to say, and you leave wanting more."},
+      {h: "Choose one anchor"},
+      {p: "The anchor is the single thing the date is about: a meal, a walk to a view, a gallery, a game. Everything else exists to support it. If you pick two anchors you spend the date moving between them."},
+      {h: "A sample two-hour flow"},
+      {plan: [["0:00", "Meet somewhere easy to find, with a place to sit if one of you is early."], ["0:15", "Short walk to the anchor. Walking side by side makes the first conversation easier than facing each other."], ["0:30", "Anchor activity: dinner, coffee and dessert, or a museum floor."], ["1:30", "A five minute walk or a drink to close. Keep it light."], ["2:00", "Finish while it is still good."]]},
+      {h: "Plan the travel, not just the venue"},
+      {p: "The most common way short dates fall apart is the gap between places. Keep every stop within a ten minute walk or a short ride, and check opening hours before you commit."},
+      {p: "If you give DateFlow your start time and two hours, it builds the order for you, so the travel is already accounted for."}
+    ]
+  },
+  {
+    id: "free-date-ideas", cat: "Budget", title: "Free date ideas that do not feel cheap",
+    dek: "Parks, views, walks and picnics cost nothing. The difference between free and forgettable is a little preparation.",
+    vibe: "Romantic", time: "3 hours", budget: "Free",
+    date: "Nov 8, 2026",
+    body: [
+      {p: "A free date works when the setting does the heavy lifting. A good view, good light and good company are rarely sold separately, and the best ones do not need a reservation."},
+      {h: "Four free formats"},
+      {list: ["A viewpoint at golden hour. Check sunset time and arrive thirty minutes early to claim a spot.", "A long walk with one destination, like a market, a waterfront or a quiet street you have never taken.", "A picnic built from what is already in your kitchen. A blanket and one shared snack beats a complicated spread.", "A free exhibit, public garden or open-air event. Check local listings the day before."]},
+      {h: "Small details that carry the date"},
+      {p: "Bring a blanket, water, and one thing that is a surprise: a song, a question card, a favorite snack. Charge your phone. Decide in advance what you will do if it rains."},
+      {p: "Set the Free date option in DateFlow and it plans around parks, views, walks and picnics, with a time limit and a start time so the day has a shape."}
+    ]
+  },
+  {
+    id: "naira-date-budget", cat: "Budget", title: "Planning a date in naira without overspending",
+    dek: "Set the number first, then build the date around it. A fixed budget makes the plan better, not smaller.",
+    vibe: "Fancy", time: "4 hours", budget: "₦50,000",
+    date: "Nov 6, 2026",
+    body: [
+      {p: "Most budgeting advice starts with what you can cut. For a date, it works better to start with what matters most to the two of you and give that the largest share."},
+      {h: "A simple split"},
+      {list: ["About half for food, since it is the part you will remember.", "About a quarter for the activity.", "About a fifth for getting there and back.", "The rest as a buffer for the unexpected."]},
+      {p: "These are starting points, not rules. If the activity is free, move that share into the meal. If you are cooking a surprise dinner, move the food share into the activity."},
+      {h: "Watch the quiet costs"},
+      {p: "Transport, drinks, service charges and parking add up and rarely appear in the plan. Count them before you leave, and keep the buffer for them."},
+      {p: "In DateFlow you can switch the currency between dollars and naira and set a budget, and the plan stays inside that number."}
+    ]
+  },
+  {
+    id: "stay-in-date", cat: "Stay in", title: "Stay-in dates that beat going out",
+    dek: "A night at home is easy to do badly. Give it a structure and it turns into the best date of the month.",
+    vibe: "Chill", time: "4 hours", budget: "$25",
+    date: "Nov 4, 2026",
+    body: [
+      {p: "The risk with a night in is that it quietly becomes two people on separate screens. A little structure fixes that."},
+      {h: "Treat it like an outing"},
+      {p: "Choose a start time, get dressed, and set up the room. Dim the lights, clear the table, put the phones in another room."},
+      {h: "A four hour evening"},
+      {plan: [["7:00", "Cook something new together. Pick a recipe that needs two pairs of hands."], ["8:30", "Eat at a proper table, not on the sofa."], ["9:15", "A game, a film, or a playlist each. Take turns choosing."], ["10:30", "Dessert and a slow wind down."]]},
+      {h: "Dietary needs come first"},
+      {p: "If one of you is vegetarian or eats halal, choose the menu together before shopping. Cooking at home is the easiest way to get this right every time."}
+    ]
+  },
+  {
+    id: "first-date-with-partner", cat: "Planning", title: "Solo or together: who should plan the date?",
+    dek: "Surprise dates are lovely and joint plans are safer. Here is how to choose, and how to get both.",
+    vibe: "Spontaneous", time: "Full day", budget: "$100",
+    date: "Nov 2, 2026",
+    body: [
+      {p: "Planning alone gives you control and a chance to surprise someone. Planning together removes the risk of a miss. Neither is better, so the real question is what this particular date is for."},
+      {h: "When to plan on your own"},
+      {p: "Anniversaries, birthdays, or any moment where the effort is part of the gift. Ask a friend or check their calendar so you do not clash with something."},
+      {h: "When to plan together"},
+      {p: "Early dates, busy weeks, and anyone with dietary needs or strong preferences. A shared plan avoids a table at a restaurant neither of you wanted."},
+      {h: "A middle path"},
+      {p: "Agree on the vibe and the budget together, then let one person choose the details. You get the surprise and the safety net."},
+      {p: "DateFlow asks who is planning, on your own or with your partner, and shapes the plan to match."}
+    ]
+  },
+  {
+    id: "food-that-fits", cat: "Food", title: "Choosing food for a date when tastes differ",
+    dek: "Italian, Turkish, Japanese, or local. How to pick a cuisine when one of you wants spice and the other wants pizza.",
+    vibe: "Romantic", time: "3 hours", budget: "$60",
+    date: "Oct 30, 2026",
+    body: [
+      {p: "Food is the most common source of date friction, and it is easy to avoid. Each person lists three things they love and two they would skip. The overlap is almost always larger than expected."},
+      {h: "Use the skip list"},
+      {p: "What you avoid tells a planner more than what you like. If seafood and steak are both out, you have already ruled out half of the fancy menus in town."},
+      {h: "Cuisines that share well"},
+      {list: ["Turkish and Middle Eastern meze, because everyone picks from the middle.", "Japanese sets, where each person builds their own plate.", "Italian, which usually has vegetarian and halal-friendly options on the same menu.", "Local and regional kitchens, for something neither of you has tried."]},
+      {p: "Mark halal or vegetarian before you pick a restaurant, not after. DateFlow lets you set food you love, food to skip and dietary needs together, so the plan is filtered before it reaches you."}
+    ]
+  }
+];
+
+var CATS = ["All", "Planning", "Budget", "Stay in", "Food"];
+var state = { cat: "All", q: "" };
+var view = document.getElementById("view");
+
+function readMins(p) {
+  var words = p.body.map(function (b) {
+    return (b.p || b.h || (b.list || []).join(" ") || (b.plan || []).map(function (x) { return x[1]; }).join(" "));
+  }).join(" ").split(/\s+/).length;
+  return Math.max(2, Math.round(words / 200));
+}
+
+function stub(p, big) {
+  return '<a class="stub' + (big ? ' feature' : '') + '" href="#' + p.id + '">' +
+    '<div class="top"><span class="tag">' + p.cat + '</span><h3>' + p.title + '</h3><p>' + p.dek +
+    '</p><span class="meta">' + p.date + ' · ' + readMins(p) + ' min read</span></div>' +
+    '<div class="perf"><div><small>Vibe</small><span>' + p.vibe + '</span></div><div><small>Time</small><span>' +
+    p.time + '</span></div><div><small>Budget</small><span>' + p.budget + '</span></div></div></a>';
+}
+
+function renderHome() {
+  document.title = "DateFlow Journal";
+  var q = state.q.trim().toLowerCase();
+  var list = POSTS.filter(function (p) {
+    var okCat = state.cat === "All" || p.cat === state.cat;
+    var okQ = !q || (p.title + " " + p.dek + " " + p.cat + " " + p.vibe).toLowerCase().indexOf(q) > -1;
+    return okCat && okQ;
+  });
+  var html = '<section class="hero"><h1>Date ideas that fit <em>your night.</em></h1>' +
+    '<p>Plans, budgets and small tricks for dates that work, from the team behind DateFlow.</p>' +
+    '<div class="tools"><input class="search" id="q" type="search" placeholder="Search the journal" aria-label="Search posts" value="' +
+    state.q.replace(/"/g, "&quot;") + '"><div class="chips" role="group" aria-label="Filter by topic">' +
+    CATS.map(function (c) {
+      return '<button class="chip" type="button" data-cat="' + c + '" aria-pressed="' + (state.cat === c) + '">' + c + '</button>';
+    }).join("") + '</div></div></section><section id="posts">' + postsHtml(list) + '</section>';
+  view.innerHTML = html;
+  var qi = document.getElementById("q");
+  qi.addEventListener("input", function () {
+    state.q = qi.value;
+    document.getElementById("posts").innerHTML = postsHtml(filtered());
+  });
+  view.querySelectorAll(".chip").forEach(function (b) {
+    b.addEventListener("click", function () { state.cat = b.getAttribute("data-cat"); renderHome(); });
+  });
+}
+
+function filtered() {
+  var q = state.q.trim().toLowerCase();
+  return POSTS.filter(function (p) {
+    var okCat = state.cat === "All" || p.cat === state.cat;
+    var okQ = !q || (p.title + " " + p.dek + " " + p.cat + " " + p.vibe).toLowerCase().indexOf(q) > -1;
+    return okCat && okQ;
+  });
+}
+
+function postsHtml(list) {
+  if (!list.length) return '<p class="empty">No posts match that search. Try a different word or clear the filter.</p>';
+  var first = (state.cat === "All" && !state.q.trim()) ? list[0] : null;
+  var rest = first ? list.slice(1) : list;
+  return (first ? stub(first, true) : "") + '<div class="grid">' + rest.map(function (p) { return stub(p, false); }).join("") + '</div>';
+}
+
+function bodyHtml(blocks) {
+  return blocks.map(function (b) {
+    if (b.h) return "<h2>" + b.h + "</h2>";
+    if (b.p) return "<p>" + b.p + "</p>";
+    if (b.list) return "<ul>" + b.list.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>";
+    if (b.plan) return '<ul class="timeline">' + b.plan.map(function (x) {
+      return "<li><time>" + x[0] + "</time><span>" + x[1] + "</span></li>";
+    }).join("") + "</ul>";
+    return "";
+  }).join("");
+}
+
+function renderPost(p) {
+  document.title = p.title + " | DateFlow Journal";
+  var others = POSTS.filter(function (x) { return x.id !== p.id; }).slice(0, 2);
+  view.innerHTML = '<a class="back" href="#">&larr; All posts</a><article class="article">' +
+    '<span class="tag">' + p.cat + '</span><h1>' + p.title + '</h1><p class="dek">' + p.dek + '</p>' +
+    '<span class="meta">' + p.date + ' · ' + readMins(p) + ' min read</span>' +
+    '<div class="perf"><div><small>Vibe</small><span>' + p.vibe + '</span></div><div><small>Time</small><span>' +
+    p.time + '</span></div><div><small>Budget</small><span>' + p.budget + '</span></div></div>' +
+    bodyHtml(p.body) +
+    '<div class="cta"><h2>Tell us your vibe. We\'ll handle the date.</h2><p>Set your location, time, budget and vibe, and get a full plan in a minute.</p>' +
+    '<a class="btn" style="background:#fff;color:#2A0B3D" href="' + APP + '" target="_blank" rel="noopener">Plan our date</a></div>' +
+    '</article><section class="more"><h2>Keep reading</h2><div class="grid">' +
+    others.map(function (o) { return stub(o, false); }).join("") + '</div></section>';
+}
+
+function route() {
+  var id = (location.hash || "").replace("#", "");
+  var p = POSTS.filter(function (x) { return x.id === id; })[0];
+  if (p) renderPost(p); else renderHome();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+route();
+</script>
+
+</html>
