@@ -122,6 +122,37 @@ h1, h2, h3 { font-family: var(--font); line-height: 1.1; text-wrap: balance; mar
 
 footer { margin-top: 64px; padding-top: 22px; border-top: 1.5px solid rgba(255,255,255,0.35); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; color: rgba(255,255,255,0.92); font-size: 14px; }
 
+
+/* live planner box */
+.planner { background: var(--surface); color: var(--ink); border-top: 8px solid var(--pink-edge); border-radius: 24px; padding: 24px clamp(18px, 4vw, 32px) 28px; margin-bottom: 26px; box-shadow: 0 16px 40px rgba(50, 0, 80, 0.30); }
+.planner h2 { font-size: 28px; font-weight: 800; margin: 0; }
+.planner .sub { margin: 6px 0 12px; color: var(--muted); font-size: 16px; max-width: none; }
+.planner label { display: block; font-weight: 600; margin: 14px 0 6px; font-size: 15px; }
+.planner input[type="text"], .planner select { width: 100%; background: var(--field); color: var(--ink); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; font: 400 16px var(--font); }
+.planner input[type="range"] { width: 100%; accent-color: var(--red); }
+.planner .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.planner .two > div { min-width: 0; }
+.planner .chk { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.planner .chk input { width: 20px; height: 20px; accent-color: var(--red); margin: 0; }
+.planner .btn { margin-top: 20px; }
+.planner .btn[disabled] { opacity: 0.6; cursor: wait; }
+.pout { margin-top: 20px; }
+.pmsg { color: var(--muted); margin: 0; font-size: 16px; }
+.perr { color: #B3122E; font-weight: 600; margin: 0; font-size: 16px; }
+.presult h3 { font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+.pstop { display: grid; gap: 3px; padding: 14px 16px; border: 2px solid var(--line); border-radius: 14px; margin-bottom: 10px; background: var(--field); }
+.pstop small { font-weight: 700; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #B01C85; }
+.pstop strong { font-size: 18px; }
+.pstop span { color: var(--muted); font-size: 15px; }
+.pstop a { color: #B01C85; font-weight: 600; font-size: 15px; }
+.pstop em { font-style: normal; font-weight: 600; font-size: 14px; }
+.ptotal { font-weight: 800; font-size: 20px; margin: 14px 0 0; }
+.article .planner { box-shadow: none; border-top: 0; border: 2px dashed var(--red); background: var(--pink); margin: 34px 0 0; }
+.article .planner h2 { margin: 0; font-size: 24px; }
+.article .planner .sub { font-size: 16px; }
+.article .planner .pstop { background: var(--surface); }
+@media (max-width: 480px) { .planner .two { grid-template-columns: 1fr; } }
+
 @media (max-width: 720px) {
   .feature { grid-template-columns: 1fr; }
   .feature .perf { grid-template-columns: repeat(3, minmax(0, 1fr)); border-left: 0; border-top: 2px dashed var(--red); }
@@ -142,17 +173,17 @@ footer { margin-top: 64px; padding-top: 22px; border-top: 1.5px solid rgba(255,2
 <div class="wrap">
   <header class="bar">
     <a class="brand" href="#" aria-label="DateFlow Journal home"><svg viewBox="0 0 66 62" aria-hidden="true"><defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F0405E"/><stop offset="1" stop-color="#9A2BB0"/></linearGradient></defs><path d="M33 59C10 43 2 31 2 20 2 9 9 2 19 2c6 0 11 3 14 8 3-5 8-8 14-8 10 0 17 7 17 18 0 11-8 23-31 39z" fill="url(#hg)"/><circle cx="17" cy="22" r="5.5" fill="#fff"/><circle cx="25" cy="27" r="2.6" fill="#fff"/><circle cx="33" cy="23" r="3" fill="#fff"/><circle cx="41" cy="24" r="2.6" fill="#fff"/><circle cx="48" cy="29" r="5.5" fill="#FFD6DF"/></svg><b>DateFlow</b><span>Journal</span></a>
-    <a class="btn light" href="https://dateflow-eight.vercel.app/" target="_blank" rel="noopener">Plan a date</a>
+    <a class="btn light" href="https://www.dateflow.blog/" target="_blank" rel="noopener">Plan a date</a>
   </header>
   <main id="view"></main>
   <footer>
     <span>Tell us your vibe. We'll handle the date.</span>
-    <a href="https://dateflow-eight.vercel.app/" target="_blank" rel="noopener">Open the planner</a>
+    <a href="https://www.dateflow.blog/" target="_blank" rel="noopener">Open the planner</a>
   </footer>
 </div>
 
 <script>
-var APP = "https://dateflow-eight.vercel.app/";
+var APP = "https://www.dateflow.blog/";
 
 /* Each post carries the same three inputs the planner asks for: vibe, time, budget. */
 var POSTS = [
@@ -247,6 +278,111 @@ var POSTS = [
   }
 ];
 
+
+/* Live planner: calls the DateFlow backend, the same one the app uses. */
+var API = "https://dateflow-api.onrender.com";
+var CUR = {
+  USD: { label: "Dollar ($)", locale: "en-US", min: 10, max: 500, step: 10, start: 100 },
+  NGN: { label: "Naira (₦)", locale: "en-NG", min: 10000, max: 500000, step: 10000, start: 100000 }
+};
+var VIBES = ["Romantic", "Adventurous", "Chill", "Fancy", "Spontaneous"];
+var EMPTY_PREFS = { cuisines: [], avoid: [], diet: [], activities: [] };
+
+function esc(t) {
+  return String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function money(a, c) {
+  return new Intl.NumberFormat(CUR[c].locale, { style: "currency", currency: c, maximumFractionDigits: 0 }).format(a);
+}
+function mapsLink(place) {
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place.name + " " + (place.address || ""));
+}
+
+function plannerHtml(title, sub, vibe) {
+  vibe = VIBES.indexOf(vibe) > -1 ? vibe : "Romantic";
+  return '<section class="planner" id="planner" data-vibe="' + esc(vibe) + '"><h2>' + esc(title) + '</h2><p class="sub">' + esc(sub) + '</p>' +
+    '<form id="pform">' +
+    '<label for="pcity">City or neighborhood</label><input type="text" id="pcity" placeholder="e.g. Lekki, Lagos" required autocomplete="off">' +
+    '<div class="two"><div><label for="pcur">Currency</label><select id="pcur"><option value="USD">Dollar ($)</option><option value="NGN">Naira (₦)</option></select></div>' +
+    '<div><label for="phours">Time available</label><select id="phours"><option value="2">2 hours</option><option value="3" selected>3 hours</option><option value="4">4 hours</option><option value="6">6 hours</option><option value="8">Full day</option></select></div></div>' +
+    '<label for="pbudget" id="pbl"></label><input type="range" id="pbudget">' +
+    '<label class="chk"><input type="checkbox" id="pfree"> Free date (parks, views, walks and picnics)</label>' +
+    '<label>Vibe</label><div class="chips" id="pvibes">' +
+    VIBES.map(function (v) { return '<button class="chip" type="button" data-v="' + v + '" aria-pressed="' + (v === vibe) + '">' + v + '</button>'; }).join("") +
+    '</div><button class="btn" type="submit" id="pgo">Show me real places</button></form>' +
+    '<div class="pout" id="pout" aria-live="polite"></div></section>';
+}
+
+function mountPlanner() {
+  var box = document.getElementById("planner");
+  if (!box) return;
+  var st = { vibe: box.getAttribute("data-vibe"), budget: CUR.USD.start };
+  var cur = document.getElementById("pcur"), bud = document.getElementById("pbudget"),
+      bl = document.getElementById("pbl"), free = document.getElementById("pfree"),
+      out = document.getElementById("pout"), go = document.getElementById("pgo");
+
+  function setRange() {
+    var c = CUR[cur.value];
+    bud.min = c.min; bud.max = c.max; bud.step = c.step; bud.value = st.budget;
+    bl.textContent = free.checked ? "Budget: free" : "Budget: " + money(st.budget, cur.value);
+    bud.disabled = free.checked;
+  }
+  cur.addEventListener("change", function () { st.budget = CUR[cur.value].start; setRange(); });
+  bud.addEventListener("input", function () { st.budget = Number(bud.value); setRange(); });
+  free.addEventListener("change", setRange);
+  document.getElementById("pvibes").addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("button") : null;
+    if (!b) return;
+    st.vibe = b.getAttribute("data-v");
+    this.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+  });
+  setRange();
+
+  document.getElementById("pform").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var city = document.getElementById("pcity").value.trim();
+    if (!city) return;
+    var code = cur.value;
+    go.disabled = true;
+    out.innerHTML = '<p class="pmsg" id="pwait">Planning your date…</p>';
+    var slow = setTimeout(function () {
+      var w = document.getElementById("pwait");
+      if (w) w.textContent = "Waking up the planner. The first request can take up to a minute.";
+    }, 6000);
+    fetch(API + "/api/plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        budget: free.checked ? 0 : st.budget, free: free.checked, stay: false, vibe: st.vibe,
+        location: city, hours: Number(document.getElementById("phours").value), surprise: false, prefs: EMPTY_PREFS
+      })
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) throw new Error(data.error || "Something went wrong.");
+        return data;
+      });
+    }).then(function (plan) {
+      var total = 0;
+      var stops = (plan.stops || []).map(function (s, i) {
+        total += s.cost || 0;
+        var name = s.place ? s.place.name : s.title;
+        var line = s.place ? s.title + ". " + (s.note || "") : (s.note || "");
+        return '<div class="pstop"><small>Stop ' + (s.order || i + 1) + '</small><strong>' + esc(name) + '</strong><span>' + esc(line) + '</span>' +
+          (s.place ? '<a href="' + esc(mapsLink(s.place)) + '" target="_blank" rel="noopener">Open in Google Maps</a>' : "") +
+          '<em>' + (s.cost === 0 ? "Free" : money(s.cost, code)) + (s.minutes ? " · about " + s.minutes + " min" : "") + '</em></div>';
+      }).join("");
+      out.innerHTML = '<div class="presult"><h3>' + esc(st.vibe) + ' in ' + esc(city) + (plan.free ? " · Free" : "") + '</h3>' + stops +
+        '<p class="ptotal">' + (plan.free ? "Totally free" : money(total, code) + " estimated") + '</p>' +
+        '<p class="pmsg" style="margin-top:12px">Want times, a date and a link to share? <a href="' + APP + '" target="_blank" rel="noopener">Plan it in DateFlow</a>.</p></div>';
+    }).catch(function (err) {
+      out.innerHTML = '<p class="perr">' + esc(err && err.message ? err.message : "Could not reach the planner.") + ' Please try again in a minute.</p>';
+    }).then(function () {
+      clearTimeout(slow);
+      go.disabled = false;
+    });
+  });
+}
+
 var CATS = ["All", "Planning", "Budget", "Stay in", "Food"];
 var state = { cat: "All", q: "" };
 var view = document.getElementById("view");
@@ -280,8 +416,9 @@ function renderHome() {
     state.q.replace(/"/g, "&quot;") + '"><div class="chips" role="group" aria-label="Filter by topic">' +
     CATS.map(function (c) {
       return '<button class="chip" type="button" data-cat="' + c + '" aria-pressed="' + (state.cat === c) + '">' + c + '</button>';
-    }).join("") + '</div></div></section><section id="posts">' + postsHtml(list) + '</section>';
+    }).join("") + '</div></div></section>' + plannerHtml("Plan a date right here", "Enter your city and budget. We suggest real places with costs, like the DateFlow app.", "Romantic") + '<section id="posts">' + postsHtml(list) + '</section>';
   view.innerHTML = html;
+  mountPlanner();
   var qi = document.getElementById("q");
   qi.addEventListener("input", function () {
     state.q = qi.value;
@@ -328,11 +465,12 @@ function renderPost(p) {
     '<span class="meta">' + p.date + ' · ' + readMins(p) + ' min read</span>' +
     '<div class="perf"><div><small>Vibe</small><span>' + p.vibe + '</span></div><div><small>Time</small><span>' +
     p.time + '</span></div><div><small>Budget</small><span>' + p.budget + '</span></div></div>' +
-    bodyHtml(p.body) +
+    bodyHtml(p.body) + plannerHtml("Plan this date for real", "Enter your city and budget to get real places with costs.", p.vibe) +
     '<div class="cta"><h2>Tell us your vibe. We\'ll handle the date.</h2><p>Set your location, time, budget and vibe, and get a full plan in a minute.</p>' +
     '<a class="btn" style="background:#fff;color:#2A0B3D" href="' + APP + '" target="_blank" rel="noopener">Plan our date</a></div>' +
     '</article><section class="more"><h2>Keep reading</h2><div class="grid">' +
     others.map(function (o) { return stub(o, false); }).join("") + '</div></section>';
+  mountPlanner();
 }
 
 function route() {
