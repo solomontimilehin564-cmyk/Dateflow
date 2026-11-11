@@ -510,6 +510,24 @@ function App() {
         DateFlow
       </h1>
       <p className="tagline">Tell us your vibe. We'll handle the date.</p>
+      <a
+        className="blog-link"
+        href="/blog"
+        style={{
+          display: "inline-block",
+          margin: "2px 0 16px",
+          padding: "8px 16px",
+          borderRadius: "999px",
+          border: "1.5px solid rgba(255, 255, 255, 0.65)",
+          background: "rgba(255, 255, 255, 0.16)",
+          color: "#fff",
+          fontWeight: 600,
+          fontSize: "15px",
+          textDecoration: "none",
+        }}
+      >
+        Read the DateFlow blog →
+      </a>
 
       {!session && (
         <form onSubmit={handleSubmit}>
